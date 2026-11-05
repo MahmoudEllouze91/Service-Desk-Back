@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id String   @id @default(cuid())
+  email String   @unique
+  firstname String?
+  lastname String?
+  role String
+  createdAt DateTime @default(now())
+
+  createdRequests  Request[]       @relation("userCreator")
+  assignedRequests Request[]       @relation("assignedOperator")
+  statusChanges StatusHistory[]
+  comments Comment[]
+}
+
+model Request {
+  id String @id @default(cuid())
+  title String
+  description String
+  category String
+  status String
+  urgency String
+
+  userCreatorId String
+  userCreator User   @relation("userCreator", fields: [userCreatorId], references: [id])
+  assignedOperatorId String
+  assignedOperator User   @relation("assignedOperator", fields: [assignedOperatorId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  comments Comment[]
+  statusHistory StatusHistory[]
+}
+
+model StatusHistory {
+  id String @id @default(cuid())
+  status String
+
+  requestId String
+  request Request @relation(fields: [requestId], references: [id])
+  assigningUserId String
+  assigningUser User    @relation(fields: [assigningUserId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Comment {
+  id String @id @default(cuid())
+  message String
+
+  requestId String
+  request Request @relation(fields: [requestId], references: [id])
+  userCreatorId String
+  userCreator User    @relation(fields: [userCreatorId], references: [id])
+
+  createdAt DateTime @default(now())
+}

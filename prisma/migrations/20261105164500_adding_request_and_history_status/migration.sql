@@ -48,7 +48,7 @@ CREATE TABLE "new_User" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO "new_User" ("id", "email", "firstname", "role")
-SELECT CAST("id" AS TEXT), "email", "name", 'user' FROM "User";
+SELECT CAST("id" AS TEXT), "email", "name", 'MANAGER' FROM "User";
 DROP TABLE "User";
 ALTER TABLE "new_User" RENAME TO "User";
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");

@@ -5,8 +5,9 @@ A simple backend application to train myself with Node and [Nest](https://github
 
 
 ## Project setup
-
+Download the project 
 ```bash
+$ git clone https://github.com/MahmoudEllouze91/Service-Desk-Back.git
 $ npm install
 ```
 

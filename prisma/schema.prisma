@@ -12,12 +12,29 @@ datasource db {
   provider = "sqlite"
 }
 
+enum Role {
+  REQUESTER
+  OPERATOR
+  MANAGER
+}
+enum RequestStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+enum Urgency {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
 model User {
   id String   @id @default(cuid())
   email String   @unique
   firstname String?
   lastname String?
-  role String
+  role Role
   createdAt DateTime @default(now())
 
   createdRequests  Request[]       @relation("userCreator")
@@ -31,8 +48,8 @@ model Request {
   title String
   description String
   category String
-  status String
-  urgency String
+  status RequestStatus
+  urgency Urgency
 
   userCreatorId String
   userCreator User   @relation("userCreator", fields: [userCreatorId], references: [id])
@@ -43,11 +60,17 @@ model Request {
 
   comments Comment[]
   statusHistory StatusHistory[]
+
+  @@index([category])
+  @@index([userCreatorId])
+  @@index([assignedOperatorId])
+  @@index([status])
+  @@index([urgency])
 }
 
 model StatusHistory {
   id String @id @default(cuid())
-  status String
+  status RequestStatus
 
   requestId String
   request Request @relation(fields: [requestId], references: [id])
@@ -67,4 +90,7 @@ model Comment {
   userCreator User    @relation(fields: [userCreatorId], references: [id])
 
   createdAt DateTime @default(now())
+
+  @@index([requestId])
+  @@index([userCreatorId])
 }

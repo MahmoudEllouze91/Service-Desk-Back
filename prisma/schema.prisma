@@ -53,8 +53,8 @@ model Request {
 
   userCreatorId String
   userCreator User   @relation("userCreator", fields: [userCreatorId], references: [id])
-  assignedOperatorId String
-  assignedOperator User   @relation("assignedOperator", fields: [assignedOperatorId], references: [id])
+  assignedOperatorId String?
+  assignedOperator User?   @relation("assignedOperator", fields: [assignedOperatorId], references: [id])
 
   createdAt DateTime @default(now())
 

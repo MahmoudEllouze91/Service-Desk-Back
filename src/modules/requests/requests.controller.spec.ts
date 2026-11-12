@@ -26,11 +26,76 @@ describe('RequestsController', () => {
   });
 
   it('returns all requests from the service', async () => {
-    const requests = [{ id: 'request-1' }];
-    requestsService.findAll.mockResolvedValue(requests);
+    const result = {
+      items: [{ id: 'request-1' }],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
+    };
+    requestsService.findAll.mockResolvedValue(result);
 
-    await expect(controller.findAll()).resolves.toBe(requests);
-    expect(requestsService.findAll).toHaveBeenCalledOnce();
+    await expect(controller.findAll()).resolves.toBe(result);
+    expect(requestsService.findAll).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 10,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+  });
+
+  it('passes validated pagination query parameters to the service', async () => {
+    requestsService.findAll.mockResolvedValue({});
+
+    await controller.findAll('3', '25');
+
+    expect(requestsService.findAll).toHaveBeenCalledWith({
+      page: 3,
+      pageSize: 25,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+  });
+
+  it('passes validated title, status, and sorting parameters to the service', async () => {
+    requestsService.findAll.mockResolvedValue({});
+
+    await controller.findAll(
+      '2',
+      '10',
+      'printer',
+      'IN_PROGRESS',
+      'title',
+      'asc',
+    );
+
+    expect(requestsService.findAll).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 10,
+      title: 'printer',
+      status: 'IN_PROGRESS',
+      sortBy: 'title',
+      sortOrder: 'asc',
+    });
+  });
+
+  it('rejects invalid pagination query parameters', () => {
+    expect(() => controller.findAll('0', '10')).toThrow(
+      'page must be a positive integer',
+    );
+    expect(() => controller.findAll('1', '101')).toThrow(
+      'pageSize must not exceed 100',
+    );
+    expect(() => controller.findAll('1', '10', undefined, 'INVALID')).toThrow(
+      'status must be one of:',
+    );
+    expect(() =>
+      controller.findAll('1', '10', undefined, undefined, 'unknown'),
+    ).toThrow('sortBy must be one of:');
+    expect(() =>
+      controller.findAll('1', '10', undefined, undefined, 'title', 'sideways'),
+    ).toThrow('sortOrder must be one of:');
+    expect(requestsService.findAll).not.toHaveBeenCalled();
   });
 
   it('returns a request by id', async () => {

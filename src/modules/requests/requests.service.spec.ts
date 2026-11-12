@@ -7,6 +7,7 @@ describe('RequestsService', () => {
   const prisma = {
     request: {
       findMany: vi.fn(),
+      count: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -29,12 +30,42 @@ describe('RequestsService', () => {
     expect(service).toBeDefined();
   });
 
-  it('fetches all requests from Prisma', async () => {
+  it('fetches a page of requests and the total count from Prisma', async () => {
     const requests = [{ id: 'request-1' }];
     prisma.request.findMany.mockResolvedValue(requests);
+    prisma.request.count.mockResolvedValue(21);
 
-    await expect(service.findAll()).resolves.toBe(requests);
-    expect(prisma.request.findMany).toHaveBeenCalledWith();
+    await expect(
+      service.findAll({
+        page: 2,
+        pageSize: 10,
+        status: 'NEW',
+        title: 'login',
+        sortBy: 'title',
+        sortOrder: 'asc',
+      }),
+    ).resolves.toEqual({
+      items: requests,
+      page: 2,
+      pageSize: 10,
+      total: 21,
+      totalPages: 3,
+    });
+    expect(prisma.request.findMany).toHaveBeenCalledWith({
+      where: {
+        title: { contains: 'login' },
+        status: 'NEW',
+      },
+      orderBy: [{ title: 'asc' }, { id: 'asc' }],
+      skip: 10,
+      take: 10,
+    });
+    expect(prisma.request.count).toHaveBeenCalledWith({
+      where: {
+        title: { contains: 'login' },
+        status: 'NEW',
+      },
+    });
   });
 
   it('fetches a request by id', async () => {

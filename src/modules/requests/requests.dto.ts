@@ -23,6 +23,22 @@ export interface UpdateRequestDto {
   assignedOperatorId?: string | null;
 }
 
+export interface RequestPagination {
+  page: number;
+  pageSize: number;
+  title?: string;
+  status?: RequestStatus;
+  sortBy: RequestSortBy;
+  sortOrder: RequestSortOrder;
+}
+
+export type RequestSortBy = 'createdAt' | 'title' | 'status';
+export type RequestSortOrder = 'asc' | 'desc';
+
+const defaultPage = 1;
+const defaultPageSize = 10;
+const maxPageSize = 100;
+
 const createFields = [
   'title',
   'description',
@@ -108,6 +124,95 @@ export function validateRequestId(id: string): string {
     throw new BadRequestException('Request id must be a non-empty string');
   }
   return id;
+}
+
+function parsePositiveInteger(value: unknown, field: string): number {
+  if (value === undefined) {
+    return field === 'page' ? defaultPage : defaultPageSize;
+  }
+
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) {
+    throw new BadRequestException(`${field} must be a positive integer`);
+  }
+
+  const parsedValue = Number(value);
+  if (!Number.isSafeInteger(parsedValue) || parsedValue < 1) {
+    throw new BadRequestException(`${field} must be a positive integer`);
+  }
+  return parsedValue;
+}
+
+export function validateRequestPagination(
+  pageValue?: string,
+  pageSizeValue?: string,
+  titleValue?: string,
+  statusValue?: string,
+  sortByValue?: string,
+  sortOrderValue?: string,
+): RequestPagination {
+  const page = parsePositiveInteger(pageValue, 'page');
+  const pageSize = parsePositiveInteger(pageSizeValue, 'pageSize');
+
+  if (pageSize > maxPageSize) {
+    throw new BadRequestException(`pageSize must not exceed ${maxPageSize}`);
+  }
+  if (!Number.isSafeInteger((page - 1) * pageSize)) {
+    throw new BadRequestException('page is too large');
+  }
+
+  const title = parseOptionalQueryString(titleValue, 'title')?.trim();
+  const status = statusValue
+    ? requireQueryEnum(statusValue, 'status', RequestStatus)
+    : undefined;
+  const allowedSortFields: RequestSortBy[] = ['createdAt', 'title', 'status'];
+  const sortBy = allowedSortFields.find(
+    (field) => field === (sortByValue ?? 'createdAt'),
+  );
+  if (!sortBy) {
+    throw new BadRequestException(
+      'sortBy must be one of: createdAt, title, status',
+    );
+  }
+  const sortOrder = sortOrderValue ?? 'desc';
+  if (sortOrder !== 'asc' && sortOrder !== 'desc') {
+    throw new BadRequestException('sortOrder must be one of: asc, desc');
+  }
+
+  return {
+    page,
+    pageSize,
+    ...(title ? { title } : {}),
+    ...(status ? { status } : {}),
+    sortBy,
+    sortOrder,
+  };
+}
+
+function parseOptionalQueryString(value: unknown, field: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== 'string') {
+    throw new BadRequestException(`${field} must be a string`);
+  }
+  return value;
+}
+
+function requireQueryEnum<T extends string>(
+  value: unknown,
+  field: string,
+  values: Record<string, T>,
+): T {
+  const allowedValue =
+    typeof value === 'string'
+      ? Object.values(values).find((candidate) => candidate === value)
+      : undefined;
+  if (allowedValue === undefined) {
+    throw new BadRequestException(
+      `${field} must be one of: ${Object.values(values).join(', ')}`,
+    );
+  }
+  return allowedValue;
 }
 
 export function validateCreateRequest(value: unknown): CreateRequestDto {

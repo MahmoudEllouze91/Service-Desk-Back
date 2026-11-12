@@ -7,6 +7,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type {
   CreateRequestDto,
+  RequestPagination,
   UpdateRequestDto,
 } from './requests.dto.js';
 
@@ -14,8 +15,35 @@ import type {
 export class RequestsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.request.findMany();
+  async findAll({
+    page,
+    pageSize,
+    title,
+    status,
+    sortBy,
+    sortOrder,
+  }: RequestPagination) {
+    const where = {
+      ...(title ? { title: { contains: title } } : {}),
+      ...(status ? { status } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.request.findMany({
+        where,
+        orderBy: [{ [sortBy]: sortOrder }, { id: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.request.count({ where }),
+    ]);
+
+    return {
+      items,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   async findOne(id: string) {

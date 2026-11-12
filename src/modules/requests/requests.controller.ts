@@ -5,10 +5,12 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { RequestsService } from './requests.service.js';
 import {
   validateCreateRequest,
+  validateRequestPagination,
   validateRequestId,
   validateUpdateRequest,
 } from './requests.dto.js';
@@ -18,8 +20,24 @@ export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
   @Get()
-  findAll() {
-    return this.requestsService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('title') title?: string,
+    @Query('status') status?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string,
+  ) {
+    return this.requestsService.findAll(
+      validateRequestPagination(
+        page,
+        pageSize,
+        title,
+        status,
+        sortBy,
+        sortOrder,
+      ),
+    );
   }
 
   @Get(':id')

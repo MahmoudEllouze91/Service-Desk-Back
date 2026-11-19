@@ -9,6 +9,7 @@ describe('RequestsController', () => {
     findOne: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    advanceStatus: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -145,13 +146,24 @@ describe('RequestsController', () => {
     expect(requestsService.update).toHaveBeenCalledWith('request-1', body);
   });
 
+  it('advances the status of a request by id', async () => {
+    const updated = { id: 'request-1', status: 'IN_PROGRESS' };
+    requestsService.advanceStatus.mockResolvedValue(updated);
+
+    await expect(controller.advanceStatus('request-1')).resolves.toBe(updated);
+    expect(requestsService.advanceStatus).toHaveBeenCalledWith('request-1');
+    expect(() => controller.advanceStatus(' ')).toThrow(
+      'Request id must be a non-empty string',
+    );
+  });
+
   it('rejects empty or invalid update fields', () => {
     expect(() => controller.update('request-1', {})).toThrow(
       'At least one request field is required',
     );
-    expect(() =>
-      controller.update('request-1', { urgency: 'URGENT' }),
-    ).toThrow('urgency must be one of');
+    expect(() => controller.update('request-1', { urgency: 'URGENT' })).toThrow(
+      'urgency must be one of',
+    );
     expect(requestsService.update).not.toHaveBeenCalled();
   });
 });

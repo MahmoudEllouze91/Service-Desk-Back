@@ -1,9 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../../generated/prisma/client.js';
+import { Prisma, RequestStatus } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type {
   CreateRequestDto,
@@ -30,6 +31,14 @@ export class RequestsService {
     const [items, total] = await Promise.all([
       this.prisma.request.findMany({
         where,
+        include: {
+          userCreator: {
+            select: { firstname: true, lastname: true, email: true },
+          },
+          assignedOperator: {
+            select: { firstname: true, lastname: true, email: true },
+          },
+        },
         orderBy: [{ [sortBy]: sortOrder }, { id: 'asc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -47,7 +56,25 @@ export class RequestsService {
   }
 
   async findOne(id: string) {
-    const request = await this.prisma.request.findUnique({ where: { id } });
+    const request = await this.prisma.request.findUnique({
+      where: { id },
+      include: {
+        userCreator: {
+          select: { firstname: true, lastname: true, email: true },
+        },
+        assignedOperator: {
+          select: { firstname: true, lastname: true, email: true },
+        },
+        statusHistory: {
+          include: {
+            assigningUser: {
+              select: { firstname: true, lastname: true, email: true },
+            },
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        },
+      },
+    });
     if (!request) {
       throw new NotFoundException(`Request ${id} was not found`);
     }
@@ -56,7 +83,17 @@ export class RequestsService {
 
   async create(data: CreateRequestDto) {
     try {
-      return await this.prisma.request.create({ data });
+      return await this.prisma.$transaction(async (transaction) => {
+        const request = await transaction.request.create({ data });
+        await transaction.statusHistory.create({
+          data: {
+            requestId: request.id,
+            status: request.status,
+            assigningUserId: null,
+          },
+        });
+        return request;
+      });
     } catch (error) {
       this.throwForInvalidRelation(error);
       throw error;
@@ -76,6 +113,46 @@ export class RequestsService {
       this.throwForInvalidRelation(error);
       throw error;
     }
+  }
+
+  async advanceStatus(id: string) {
+    return this.prisma.$transaction(async (transaction) => {
+      const request = await transaction.request.findUnique({ where: { id } });
+      if (!request) {
+        throw new NotFoundException(`Request ${id} was not found`);
+      }
+
+      const nextStatus: Partial<Record<RequestStatus, RequestStatus>> = {
+        [RequestStatus.NEW]: RequestStatus.IN_PROGRESS,
+        [RequestStatus.IN_PROGRESS]: RequestStatus.RESOLVED,
+      };
+      const status = nextStatus[request.status];
+      if (!status) {
+        throw new ConflictException(
+          'A resolved request cannot advance to another status',
+        );
+      }
+
+      const result = await transaction.request.updateMany({
+        where: { id, status: request.status },
+        data: { status },
+      });
+      if (result.count !== 1) {
+        throw new ConflictException(
+          'The request status changed before this update could be applied',
+        );
+      }
+
+      await transaction.statusHistory.create({
+        data: {
+          requestId: id,
+          status,
+          assigningUserId: null,
+        },
+      });
+
+      return { ...request, status };
+    });
   }
 
   private throwForInvalidRelation(error: unknown): void {

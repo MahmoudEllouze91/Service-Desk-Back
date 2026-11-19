@@ -50,6 +50,11 @@ export class RequestsController {
     return this.requestsService.create(validateCreateRequest(body));
   }
 
+  @Post(':id/advance-status')
+  advanceStatus(@Param('id') id: string) {
+    return this.requestsService.advanceStatus(validateRequestId(id));
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() body: unknown) {
     return this.requestsService.update(

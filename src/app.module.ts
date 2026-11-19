@@ -4,6 +4,8 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RequestsModule } from './modules/requests/requests.module.js';
+import { UsersModule } from './modules/users/users.module.js';
+import { StatusHistoryModule } from './modules/status-history/status-history.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -17,6 +19,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'service-desk-back',
     }),
     RequestsModule,
+    UsersModule,
+    StatusHistoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

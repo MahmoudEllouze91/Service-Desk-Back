@@ -74,8 +74,8 @@ model StatusHistory {
 
   requestId String
   request Request @relation(fields: [requestId], references: [id])
-  assigningUserId String
-  assigningUser User    @relation(fields: [assigningUserId], references: [id])
+  assigningUserId String?
+  assigningUser User?   @relation(fields: [assigningUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 }
